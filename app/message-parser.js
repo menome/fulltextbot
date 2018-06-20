@@ -2,9 +2,10 @@
 const queryBuilder = require('./queryBuilder');
 const textract = require('textract');
 const RabbitClient = require('@menome/botframework/rabbitmq');
-var truncate = require("truncate-utf8-bytes");
+const truncate = require("truncate-utf8-bytes");
+const helpers = require('./helpers');
 
-var textGenerationMimeBlacklist = ['image/png', 'image/jpeg', 'image/gif'];
+const textGenerationMimeBlacklist = ['image/png', 'image/jpeg', 'image/gif'];
 
 module.exports = function(bot) {
   var outQueue = new RabbitClient(bot.config.get('rabbit_outgoing'));
@@ -12,26 +13,46 @@ module.exports = function(bot) {
 
   // First ingestion point.
   this.handleMessage = function(msg) {
-    var mimetype = msg.Mime;
-    if(!mimetype) mimetype = "application/octet-stream";
+    var tmpPath = "/tmp/"+msg.Uuid;
+    return processMessage(msg).then((resultStr) => {
+      var downstream_actions = bot.config.get('downstream_actions');
+      var newRoutingKey = downstream_actions[resultStr];
 
-    return bot.librarian.download(msg.Library, msg.Path, "/tmp/"+msg.Uuid).then((tmpPath) => {
-      // bot.logger.info("Attempting Text Extraction for summarization from file '%s'", msg.Path)
-      return extractFulltext(mimetype, tmpPath).then((fulltext) => {
-        if(fulltext === false) return;
-        var fulltextQuery = queryBuilder.fulltextQuery(msg.Uuid, fulltext);
+      bot.logger.info("Next routing key is '%s'", newRoutingKey)
 
-        return bot.neo4j.query(fulltextQuery.compile(), fulltextQuery.params()).then((result) => {
-          console.log("Done did it");
-        })
-      }).catch(err => {
-        bot.logger.error("HELLA", err)
-      })
+      if(newRoutingKey === false) return helpers.deleteFile(tmpPath);
+      else if(newRoutingKey === undefined) return helpers.deleteFile(tmpPath);
+      else return outQueue.publishMessage(msg, undefined, {routingKey: newRoutingKey});
+    }).catch((err) => {
+      bot.logger.error(err);
+      helpers.deleteFile(tmpPath);
     })
   }
 
   //////////////////////////////
   // Internal/Helper functions
+
+  function processMessage(msg) {
+    var mimetype = msg.Mime;
+    if(!mimetype) mimetype = "application/octet-stream";
+    var tmpPath = "/tmp/"+msg.Uuid;
+
+    return helpers.getFile(bot, msg.Library, msg.Path, tmpPath).then((tmpPath) => {
+      // bot.logger.info("Attempting Text Extraction for summarization from file '%s'", msg.Path)
+      return extractFulltext(mimetype, tmpPath).then((fulltext) => {
+        if(fulltext === false) return;
+        var fulltextQuery = queryBuilder.fulltextQuery(msg.Uuid, fulltext);
+
+        return bot.neo4j.query(fulltextQuery.compile(), fulltextQuery.params()).then(() => {
+          bot.logger.info("Added fulltext to file %s", msg.Path);
+          return "success";
+        })
+      }).catch(err => {
+        bot.logger.error(err)
+        return "error";
+      })
+    })
+  }
 
   // Extracts summary text from file
   function extractFulltext(mimetype, file) {
