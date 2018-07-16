@@ -1,7 +1,7 @@
 {
   "name": "fpp-fulltext",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Extracts fulltext from files.",
   "repository": "https://github.com/menome",
   "license": "Commercial",

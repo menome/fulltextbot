@@ -16,13 +16,23 @@ module.exports = function(bot) {
     var tmpPath = "/tmp/"+msg.Uuid;
     return processMessage(msg).then((resultStr) => {
       var downstream_actions = bot.config.get('downstream_actions');
-      var newRoutingKey = downstream_actions[resultStr];
+      var newRoute = downstream_actions[resultStr];
 
-      bot.logger.info("Next routing key is '%s'", newRoutingKey)
+      if(newRoute === false || newRoute === undefined) {
+        helpers.deleteFile(tmpPath);
+        return bot.logger.info("No next routing key.");
+      }
 
-      if(newRoutingKey === false) return helpers.deleteFile(tmpPath);
-      else if(newRoutingKey === undefined) return helpers.deleteFile(tmpPath);
-      else return outQueue.publishMessage(msg, undefined, {routingKey: newRoutingKey});
+      if(typeof newRoute === "string") {
+        bot.logger.info("Next routing key is '%s'", newRoute)
+        return outQueue.publishMessage(msg, "fileProcessingMessage", {routingKey: newRoute});
+      }
+      else if(Array.isArray(newRoute)) {
+        bot.logger.info("Next routing keys are '%s'", newRoute.join(', '))
+        newRoute.forEach((rkey) => {
+          return outQueue.publishMessage(msg, "fileProcessingMessage", {routingKey: rkey});
+        })
+      }
     }).catch((err) => {
       bot.logger.error(err);
       helpers.deleteFile(tmpPath);
