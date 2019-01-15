@@ -1,14 +1,14 @@
 {
   "name": "fpp-fulltext",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Extracts fulltext from files.",
   "repository": "https://github.com/menome",
   "license": "Commercial",
   "dependencies": {
     "forever": "latest",
     "amqplib": "^0.5.1",
-    "textract": "^2.2.0",
+    "textract": "^2.4.0",
     "mime-types": "^2.1.15",
     "filepreview": "^1.0.14",
     "express": "latest",

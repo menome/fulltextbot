@@ -15,8 +15,7 @@ module.exports = function(bot) {
   this.handleMessage = function(msg) {
     var tmpPath = "/tmp/"+msg.Uuid;
     return processMessage(msg).then((resultStr) => {
-      var downstream_actions = bot.config.get('downstream_actions');
-      var newRoute = downstream_actions[resultStr];
+      var newRoute = helpers.getNextRoutingKey(resultStr, bot);
 
       if(newRoute === false || newRoute === undefined) {
         helpers.deleteFile(tmpPath);
