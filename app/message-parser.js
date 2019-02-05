@@ -50,6 +50,9 @@ module.exports = function(bot) {
       // bot.logger.info("Attempting Text Extraction for summarization from file '%s'", msg.Path)
       return extractFulltext(mimetype, tmpPath).then((fulltext) => {
         if(fulltext === false) return;
+        if(fulltext.trim() === "") {
+          return "empty-"+mimetype;
+        }
         var fulltextQuery = queryBuilder.fulltextQuery(msg.Uuid, fulltext);
 
         return bot.neo4j.query(fulltextQuery.compile(), fulltextQuery.params()).then(() => {
@@ -58,7 +61,7 @@ module.exports = function(bot) {
         })
       }).catch(err => {
         bot.logger.error(err)
-        return "error";
+        return "empty-"+mimetype;
       })
     })
   }
