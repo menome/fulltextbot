@@ -4,6 +4,7 @@ const textract = require('textract');
 const RabbitClient = require('@menome/botframework/rabbitmq');
 const truncate = require("truncate-utf8-bytes");
 const helpers = require('./helpers');
+const natural = require("natural")
 
 const textGenerationMimeBlacklist = ['image/png', 'image/jpeg', 'image/gif'];
 
@@ -49,11 +50,12 @@ module.exports = function(bot) {
     return helpers.getFile(bot, msg.Library, msg.Path, tmpPath).then((tmpPath) => {
       // bot.logger.info("Attempting Text Extraction for summarization from file '%s'", msg.Path)
       return extractFulltext(mimetype, tmpPath).then((fulltext) => {
+        let trimmedFulltext = helpers.removeStopWordsFromArray(natural.LancasterStemmer.tokenizeAndStem(fulltext)).join(" ")
         if(fulltext === false) return;
         if(fulltext.trim() === "") {
           return "empty-"+mimetype;
         }
-        var fulltextQuery = queryBuilder.fulltextQuery(msg.Uuid, fulltext);
+        var fulltextQuery = queryBuilder.fulltextQuery(msg.Uuid, fulltext, trimmedFulltext);
 
         return bot.neo4j.query(fulltextQuery.compile(), fulltextQuery.params()).then(() => {
           bot.logger.info("Added fulltext to file %s", msg.Path);
