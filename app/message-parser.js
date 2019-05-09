@@ -55,7 +55,9 @@ module.exports = function(bot) {
         if(fulltext.trim() === "") {
           return "empty-"+mimetype;
         }
-        var fulltextQuery = queryBuilder.fulltextQuery(msg.Uuid, fulltext, trimmedFulltext);
+        let wordcount = fulltext.split(' ').filter(function(n) { return n != '' }).length;
+
+        var fulltextQuery = queryBuilder.fulltextQuery({uuid: msg.Uuid, fulltext, fulltextKeywords: trimmedFulltext, wordcount});
 
         return bot.neo4j.query(fulltextQuery.compile(), fulltextQuery.params()).then(() => {
           bot.logger.info("Added fulltext to file %s", msg.Path);
