@@ -62,7 +62,8 @@ module.exports = function(bot) {
         let totalSpelledCorrectly = helpers.spellCheckList(tokens)
         let correctSpellingRatio = totalSpelledCorrectly / wordcount;
 
-        var fulltextQuery = queryBuilder.fulltextQuery({uuid: msg.Uuid, fulltext, fulltextKeywords: trimmedFulltext, wordcount, correctSpellingRatio});
+        var fulltextQuery = queryBuilder.fulltextQuery({uuid: msg.Uuid, fulltext, fulltextKeywords: trimmedFulltext, wordcount, 
+          correctSpellingRatio: correctSpellingRatio !== 0 ? correctSpellingRatio : undefined});
 
         return bot.neo4j.query(fulltextQuery.compile(), fulltextQuery.params()).then(() => {
           bot.logger.info("Added fulltext to file %s", msg.Path);
