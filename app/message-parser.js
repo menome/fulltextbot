@@ -50,14 +50,19 @@ module.exports = function(bot) {
     return helpers.getFile(bot, msg.Library, msg.Path, tmpPath).then((tmpPath) => {
       // bot.logger.info("Attempting Text Extraction for summarization from file '%s'", msg.Path)
       return extractFulltext(mimetype, tmpPath).then((fulltext) => {
+        let tokenizer = new natural.WordTokenizer();
+        let tokens = tokenizer.tokenize(fulltext);
+
         let trimmedFulltext = helpers.removeStopWordsFromArray(natural.LancasterStemmer.tokenizeAndStem(fulltext)).join(" ")
         if(fulltext === false) return;
         if(fulltext.trim() === "") {
           return "empty-"+mimetype;
         }
-        let wordcount = fulltext.split(' ').filter(function(n) { return n != '' }).length;
+        let wordcount = tokens.length;
+        let totalSpelledCorrectly = helpers.spellCheckList(tokens)
+        let correctSpellingRatio = totalSpelledCorrectly / wordcount;
 
-        var fulltextQuery = queryBuilder.fulltextQuery({uuid: msg.Uuid, fulltext, fulltextKeywords: trimmedFulltext, wordcount});
+        var fulltextQuery = queryBuilder.fulltextQuery({uuid: msg.Uuid, fulltext, fulltextKeywords: trimmedFulltext, wordcount, correctSpellingRatio});
 
         return bot.neo4j.query(fulltextQuery.compile(), fulltextQuery.params()).then(() => {
           bot.logger.info("Added fulltext to file %s", msg.Path);
