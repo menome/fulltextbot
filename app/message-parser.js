@@ -5,6 +5,7 @@ const RabbitClient = require('@menome/botframework/rabbitmq');
 const truncate = require("truncate-utf8-bytes");
 const helpers = require('./helpers');
 const natural = require("natural")
+const pdfTextExtract = require( 'pdf-text-extract' )
 
 const textGenerationMimeBlacklist = ['image/png', 'image/jpeg', 'image/gif'];
 
@@ -15,7 +16,7 @@ module.exports = function(bot) {
   // First ingestion point.
   this.handleMessage = function(msg) {
     var tmpPath = "/tmp/"+msg.Uuid;
-    return processMessage(msg).then((resultStr) => {
+    return processMessage(msg).then((resultStr) => {      
       var newRoute = helpers.getNextRoutingKey(resultStr, bot);
 
       if(newRoute === false || newRoute === undefined) {
@@ -49,7 +50,17 @@ module.exports = function(bot) {
 
     return helpers.getFile(bot, msg.Library, msg.Path, tmpPath).then((tmpPath) => {
       // bot.logger.info("Attempting Text Extraction for summarization from file '%s'", msg.Path)
-      return extractFulltext(mimetype, tmpPath).then((fulltext) => {
+      return extractFulltext(mimetype, tmpPath).then(async (extracted) => {
+        let pageTextQuery = false;
+        let fulltext = extracted;
+        if(Array.isArray(extracted)) {
+          pageTextQuery = queryBuilder.fulltextPageQuery({uuid: msg.Uuid, pageTextArray: fulltext});
+          fulltext = truncate(extracted.join(" "), 30000);
+          await bot.neo4j.query(pageTextQuery.compile(), pageTextQuery.params()).then(() => {
+            bot.logger.info("Added fulltext of pages to file %s", msg.Path);
+          })
+        }
+
         let tokenizer = new natural.WordTokenizer();
         let tokens = tokenizer.tokenize(fulltext);
 
@@ -76,14 +87,26 @@ module.exports = function(bot) {
     })
   }
 
-  // Extracts summary text from file
+  // Extracts summary text from file.
   function extractFulltext(mimetype, file) {
     if(textGenerationMimeBlacklist.indexOf(mimetype) === -1) {
       return new Promise(function(resolve, reject) {
-        textract.fromFileWithMimeAndPath(mimetype, file, function( error, text ) {
-          if(error) return reject(error);
-          return resolve(truncate(text, 30000));
-        })
+        if(mimetype === "application/pdf") {
+          pdfTextExtract(file, { layout: 'raw' }, function(error, pageArray) {
+            if(error) return reject(error);
+            return resolve(pageArray)
+          })
+        } else {
+          textract.fromFileWithMimeAndPath(mimetype, file, {
+            pdftotextOptions: {
+              layout: "raw",
+              splitPages: true
+            }
+          }, function( error, text ) {
+            if(error) return reject(error);
+            return resolve(truncate(text, 30000));
+          })
+        }
       });
     }
     else {

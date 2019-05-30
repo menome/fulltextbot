@@ -28,5 +28,6 @@
   "downstream_actions": {
     "success": "fpp.topicmodels",
     "error": false
-  }
+  },
+  "paginate": true
 }
