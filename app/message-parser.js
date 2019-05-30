@@ -91,7 +91,7 @@ module.exports = function(bot) {
   function extractFulltext(mimetype, file) {
     if(textGenerationMimeBlacklist.indexOf(mimetype) === -1) {
       return new Promise(function(resolve, reject) {
-        if(mimetype === "application/pdf") {
+        if(bot.config.get("paginate") && mimetype === "application/pdf") {
           pdfTextExtract(file, { layout: 'raw' }, function(error, pageArray) {
             if(error) return reject(error);
             return resolve(pageArray)
