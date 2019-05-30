@@ -52,6 +52,6 @@ module.exports = {
     doc: "For PDF Documents, should we split up fulltext into new pages?",
     format: Boolean,
     default: false,
-    env: "FULLTEXTBOT_PAGINATE"
+    env: "PAGINATE_RESULTS"
   }
 };
