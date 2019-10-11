@@ -51,7 +51,7 @@ module.exports = {
   paginate: {
     doc: "For PDF Documents, should we split up fulltext into new pages?",
     format: Boolean,
-    default: false,
+    default: true,
     env: "PAGINATE_RESULTS"
   }
 };

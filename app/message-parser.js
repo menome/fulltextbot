@@ -53,9 +53,26 @@ module.exports = function(bot) {
       return extractFulltext(mimetype, tmpPath).then(async (extracted) => {
         let pageTextQuery = false;
         let fulltext = extracted;
+        let pageKeywordArray = [];
+        let pageWordCountArray = [];
+        let correctSpellingRatioArray = [];
+
         if(Array.isArray(extracted)) {
-          pageTextQuery = queryBuilder.fulltextPageQuery({uuid: msg.Uuid, pageTextArray: fulltext});
+          let tokenizer = new natural.WordTokenizer();
+          extracted.forEach((pageText, pageno) => {
+            let tokens = tokenizer.tokenize(pageText);
+            pageWordCountArray[pageno] = tokens.length;
+            pageKeywordArray[pageno] = helpers.removeStopWordsFromArray(natural.LancasterStemmer.tokenizeAndStem(pageText)).join(" ");
+            correctSpellingRatioArray[pageno] = helpers.spellCheckList(tokens) / pageWordCountArray[pageno];
+          })
+
+          pageTextQuery = queryBuilder.fulltextPageQuery({
+            uuid: msg.Uuid, 
+            pageTextArray: extracted, 
+            pageKeywordArray, pageWordCountArray, correctSpellingRatioArray
+          });
           fulltext = truncate(extracted.join(" "), 30000);
+
           await bot.neo4j.query(pageTextQuery.compile(), pageTextQuery.params()).then(() => {
             bot.logger.info("Added fulltext of pages to file %s", msg.Path);
           })
