@@ -25,17 +25,17 @@ module.exports = function(bot) {
       }
 
       if(typeof newRoute === "string") {
-        bot.logger.info("Next routing key is '%s'", newRoute)
+        bot.logger.info("Next routing key", {routingKey: newRoute})
         return outQueue.publishMessage(msg, "fileProcessingMessage", {routingKey: newRoute});
       }
       else if(Array.isArray(newRoute)) {
-        bot.logger.info("Next routing keys are '%s'", newRoute.join(', '))
+        bot.logger.info("Next routing keys",{routingKey: newRoute.join(', ')})
         newRoute.forEach((rkey) => {
           return outQueue.publishMessage(msg, "fileProcessingMessage", {routingKey: rkey});
         })
       }
     }).catch((err) => {
-      bot.logger.error(err);
+      bot.logger.error("error processing message",{error:err,msg:msg});
       helpers.deleteFile(tmpPath);
     })
   }
@@ -74,7 +74,7 @@ module.exports = function(bot) {
           fulltext = truncate(extracted.join(" "), 30000);
 
           await bot.neo4j.query(pageTextQuery.compile(), pageTextQuery.params()).then(() => {
-            bot.logger.info("Added fulltext of pages to file %s", msg.Path);
+            bot.logger.info("Added fulltext of pages to file", {path:msg.Path});
           })
         }
 
@@ -94,11 +94,11 @@ module.exports = function(bot) {
           correctSpellingRatio: correctSpellingRatio !== 0 ? correctSpellingRatio : undefined});
 
         return bot.neo4j.query(fulltextQuery.compile(), fulltextQuery.params()).then(() => {
-          bot.logger.info("Added fulltext to file %s", msg.Path);
+          bot.logger.info("Added fulltext to file", {path:msg.Path});
           return "success";
         })
       }).catch(err => {
-        bot.logger.error(err)
+        bot.logger.error("error extracting text",{error:err})
         return "empty-"+mimetype;
       })
     })
@@ -127,7 +127,7 @@ module.exports = function(bot) {
       });
     }
     else {
-      bot.logger.info("Not a fulltext-extractable MIME type. Skipping.")
+      bot.logger.info("Not a fulltext-extractable MIME type. Skipping.",{mimeType:mimetype,file:file})
       return Promise.resolve(false);
     }
   }
