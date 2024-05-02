@@ -23,7 +23,7 @@
     "enable": true,
     "host": "http://localhost:3020",
     "username": "botuser",
-    "password": "UzTSy9zp46kKhTT6"
+    "password": "boser"
   },
   "downstream_actions": {
     "success": "fpp.topicmodels",
